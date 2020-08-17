@@ -30,12 +30,19 @@ class Registry(object):
         Helper method that returns a generator used to iterate over all providers
         of the current site.
         """
-        oauth2_backend_names = OAuth2ProviderConfig.key_values('backend_name', flat=True)
-        for oauth2_backend_name in oauth2_backend_names:
-            provider = OAuth2ProviderConfig.current(oauth2_backend_name)
+        site = Site.objects.get_current(get_current_request())
+        if not site:
+            return
+
+        oauth2_backend_names = OAuth2ProviderConfig.key_values('backend_name', 'site_id')
+        for oauth2_backend_name, site_id in oauth2_backend_names:
+            if site.id != site_id:
+                continue
+            
+            provider = OAuth2ProviderConfig.current(oauth2_backend_name, str(site_id))
             if provider.enabled_for_current_site and provider.backend_name in _PSA_OAUTH2_BACKENDS:
                 yield provider
-        if SAMLConfiguration.is_enabled(Site.objects.get_current(get_current_request()), 'default'):
+        if SAMLConfiguration.is_enabled(site, 'default'):
             idp_slugs = SAMLProviderConfig.key_values('slug', flat=True)
             for idp_slug in idp_slugs:
                 provider = SAMLProviderConfig.current(idp_slug)
