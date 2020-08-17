@@ -12,6 +12,8 @@ from .pipeline import AUTH_ENTRY_CUSTOM
 from .pipeline import get as get_pipeline_from_request
 from .provider import Registry
 
+from django.contrib.sites.models import Site
+from openedx.core.djangoapps.theming.helpers import get_current_request
 
 class ConfigurationModelStrategy(DjangoStrategy):
     """
@@ -30,13 +32,15 @@ class ConfigurationModelStrategy(DjangoStrategy):
             setting 'name' is configured via LTIProviderConfig.
         """
         if isinstance(backend, OAuthAuth):
-            provider_config = OAuth2ProviderConfig.current(backend.name)
-            if not provider_config.enabled_for_current_site:
-                raise Exception("Can't fetch setting of a disabled backend/provider.")
-            try:
-                return provider_config.get_setting(name)
-            except KeyError:
-                pass
+            site = Site.objects.get_current(get_current_request())
+            if site:
+                provider_config = OAuth2ProviderConfig.current(backend.name, str(site.id))
+                if not provider_config.enabled_for_current_site:
+                    raise Exception("Can't fetch setting of a disabled backend/provider.")
+                try:
+                    return provider_config.get_setting(name)
+                except KeyError:
+                    pass
 
         # special case handling of login error URL if we're using a custom auth entry point:
         if name == 'LOGIN_ERROR_URL':
