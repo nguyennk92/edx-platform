@@ -225,14 +225,14 @@ class ProviderConfig(ConfigurationModel):
     def clean(self):
         """ Ensure that either `icon_class` or `icon_image` is set """
         super(ProviderConfig, self).clean()
-        if bool(self.icon_class) == bool(self.icon_image):
+        if self.visible and bool(self.icon_class) == bool(self.icon_image):
             raise ValidationError('Either an icon class or an icon image must be given (but not both)')
 
     @property
     def provider_id(self):
         """ Unique string key identifying this provider. Must be URL and css class friendly. """
         assert self.prefix is not None
-        return "-".join((self.prefix, ) + tuple(getattr(self, field) for field in self.KEY_FIELDS))
+        return "-".join((self.prefix, ) + tuple(str(getattr(self, field)) for field in self.KEY_FIELDS))
 
     @property
     def backend_class(self):
@@ -348,7 +348,7 @@ class OAuth2ProviderConfig(ProviderConfig):
     # example:
     # class SecondOpenIDProvider(OpenIDAuth):
     #   name = "second-openId-provider"
-    KEY_FIELDS = ('backend_name',)
+    KEY_FIELDS = ('backend_name', 'site_id', )
     prefix = 'oa2'
     backend_name = models.CharField(
         max_length=50, blank=False, db_index=True,
@@ -802,6 +802,7 @@ class LTIProviderConfig(ProviderConfig):
     icon_class = None
     icon_image = None
     secondary = False
+    visible = False
 
     # LTI login cannot be initiated by the tool provider
     accepts_logins = False
